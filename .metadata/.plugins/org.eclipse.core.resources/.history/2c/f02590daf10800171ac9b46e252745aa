@@ -1,0 +1,179 @@
+package main;
+
+import javax.swing.*;
+
+import java.awt.*;
+import java.awt.event.KeyEvent;
+
+import java.util.LinkedList;
+
+
+import java.util.ArrayList;
+
+public class Display extends JComponent{
+    private static final int PLAYER_WIDTH=30;
+    private static final int PLAYER_HEIGHT=30;
+    private ArrayList<Player> players;
+    private ArrayList<Integer> keys;
+    private Player it;
+    private static final int TAG_THRESHOLD=40;
+    private ArrayList<Color> originalColor;
+    private int powerX;
+    private int powerY;
+    private Color powerColor;
+    private boolean doPowerUp;
+    private int powerW;
+    private int powerH;
+    private int powerThreshold;
+
+    private static final int REG_SPEED=3;
+    private static final int FAST_SPEED=6;
+    
+    public void paint(Graphics g){
+        for(int i=0;i<players.size();i++){
+            g.setColor(players.get(i).getColor());
+            g.fillOval(players.get(i).getX(), players.get(i).getY(), 45, 45);
+            
+        }
+        
+        if(doPowerUp)
+        {
+        	g.setColor(powerColor);
+        	g.fillRect(powerX, powerY, powerW, powerH);
+        }
+        
+    }
+
+    public Display(){
+        players = new ArrayList<Player>();
+        keys=new ArrayList<Integer>();
+        originalColor = new ArrayList<Color>();
+        doPowerUp=false;
+        powerW=30;
+        powerH=30;
+        powerThreshold=100;
+    }
+
+    public void addPlayer(Player p){
+        players.add(p);
+        originalColor.add(p.getColor());
+    }
+
+    public void chooseIt(){
+        it=players.get((int)(Math.random()*players.size()));
+        
+    }
+
+    public void addEvent(KeyEvent e){
+        if(!keys.contains(e.getKeyCode()))
+            keys.add(e.getKeyCode());
+
+        /*for(int i=0;i<players.size();i++){
+            if(players.get(i).hasKey(e.getKeyCode())) players.get(i).doKey(e.getKeyCode());
+        }*/
+        //System.out.println(keys.toString());
+    }
+
+    public void removeEvent(KeyEvent e){
+        keys.remove(keys.indexOf(e.getKeyCode()));
+       
+    }
+
+    public ArrayList<Player> getPlayers(){
+        return players;
+    }
+
+    public ArrayList<Integer> getKeys(){
+        return keys;
+    }
+
+    public boolean checkTag()
+    {
+        boolean isTagged=false;
+        for(int i=0;i<players.size();i++)
+        {
+            Player p2;
+            Player p1 = players.get(i);
+            int index2=0;
+            if(i<players.size()-1){
+
+                p2 = players.get(i+1);
+                index2=i+1;
+            }
+            else {
+                p2 = players.get(0);
+                index2=0;
+            }
+            if(p1.getX()<p2.getX()+TAG_THRESHOLD&&p1.getX()>p2.getX()-TAG_THRESHOLD&&!isTagged)
+            {
+                if(p1.getY()<p2.getY()+TAG_THRESHOLD&&p1.getY()>p2.getY()-TAG_THRESHOLD)
+                {
+                    isTagged=true;
+                    if(p1==it){
+                        System.out.println("P1 is no longer it!");
+                        System.out.println(it);
+                        it=p2;
+                        p1.setColor(originalColor.get(i));
+                    }
+                    else{
+                        it=p1;
+                        System.out.println(it);
+                        p2.setColor(originalColor.get(index2));
+                    } 
+                    System.out.println("tagged");
+                }
+            }
+            
+        }
+
+       
+        return isTagged;
+    }
+  
+    public void itColor(){
+        it.setColor(new Color((int)(Math.random()*256),(int)(Math.random()*256),(int)(Math.random()*256)));
+    }
+   
+    public void immobilize(boolean move){
+        it.immobilize(move);
+    }
+    
+    public void createPowerup(int h, int w)
+    {
+    	powerX=(int)(Math.random()*(w-powerThreshold))+powerThreshold/2;
+    	powerY=(int)(Math.random()*(h-powerThreshold))+powerThreshold/2;
+    	
+    	powerColor=new Color((int)(Math.random()*256),(int)(Math.random()*256),(int)(Math.random()*256));
+    	doPowerUp=true;
+    }
+    
+    public boolean powerOn()
+    {
+    	return doPowerUp;
+    }
+    
+    
+    public boolean checkPower()
+    {
+    	boolean isPower=false;
+    	for(int i=0;i<players.size();i++)
+        {
+            
+            Player p1 = players.get(i);
+            
+            if(p1.getX()<powerX+TAG_THRESHOLD&&p1.getX()>powerX-TAG_THRESHOLD)
+            {
+                if(p1.getY()<powerY+TAG_THRESHOLD&&p1.getY()>powerY-TAG_THRESHOLD)
+                {
+                    p1.setSpeed(FAST_SPEED);
+                    
+                }
+            }
+            
+        }
+
+       
+        return isPower;
+    
+    }
+}

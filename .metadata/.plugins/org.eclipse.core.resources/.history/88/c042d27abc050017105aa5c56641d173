@@ -1,0 +1,13 @@
+package main;
+
+import java.awt.Color;
+
+public class SimplePlayer extends Player{
+
+	public SimplePlayer(int ix, int iy, int ispeed, Color icolor){
+		super(ix,iy,ispeed,null,icolor);
+	}
+	
+	
+
+}

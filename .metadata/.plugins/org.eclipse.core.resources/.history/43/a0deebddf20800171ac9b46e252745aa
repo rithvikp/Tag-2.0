@@ -1,0 +1,274 @@
+package main;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.KeyListener;
+import java.awt.event.KeyEvent;
+
+import java.util.LinkedList;
+import java.util.ArrayList;
+import java.util.Timer;
+import java.util.TimerTask;
+
+public class Tag implements KeyListener{
+    private JFrame frame;
+    public Display d;
+    private boolean colorSwitch;
+    protected Timer time;
+
+
+    private final int HEIGHT = 800;
+    private final int WIDTH = 1500;
+    private final int WRAPAROUND_THRESHOLDY=70;
+    private final int WRAPAROUND_THRESHOLD0=-10;
+    private final int WRAPAROUND_THRESHOLDX=40;
+    private final int[] KEYMAP_ARROW={KeyEvent.VK_UP,KeyEvent.VK_RIGHT,KeyEvent.VK_DOWN,KeyEvent.VK_LEFT};
+    private final int[] KEYMAP_WASD={KeyEvent.VK_W,KeyEvent.VK_D,KeyEvent.VK_S,KeyEvent.VK_A};
+    private final int powerMax=100;
+    private final int powerWait=1000;
+    
+    private int powerCount;
+    
+    
+    private void init(){
+        d=new Display();
+        
+        d.addPlayer(new Player(30,30,3,KEYMAP_ARROW,Color.BLUE));
+        d.addPlayer(new Player(90,90,3,KEYMAP_WASD,Color.RED));
+
+        d.chooseIt();
+        
+        frame = new JFrame();
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setBounds(30,30, WIDTH,HEIGHT);
+        frame.getContentPane().setBackground(Color.CYAN);
+        frame.getContentPane().add(d);
+        time=new Timer();
+        
+        powerCount=0;
+        
+        try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | UnsupportedLookAndFeelException ex) {
+        }
+        
+        frame.addKeyListener(this);
+        frame.setVisible(true);
+        
+        
+    }
+
+    public Tag(){
+        
+        init();
+
+        colorSwitch=false;
+        
+        Runner runMain = new Runner();
+        runMain.setMain();
+        runMain.start();
+
+        Runner runTag=new Runner();
+        runTag.start();
+
+        Runner runColor = new Runner();
+        runColor.setSlow();
+        runColor.start();
+        
+    }
+    
+    
+    public void keyPressed(KeyEvent e){
+        
+        d.addEvent(e);
+        
+    }
+    
+    public void keyReleased(KeyEvent e){
+        
+        d.removeEvent(e);
+    }
+    public void keyTyped(KeyEvent e){
+        
+        if(e.getKeyChar()=='c'){
+            if(colorSwitch) colorSwitch=false;
+            else colorSwitch=true;
+
+            System.out.println("Color switch");
+        }
+    } 
+    
+    
+    public static void main(String[] args) {
+        
+        new Tag(); 
+    }
+    
+    private class Runner extends Thread{
+        Thread t;
+        private boolean shouldStop = false;
+        
+        private boolean pause = false;
+        private boolean isMain=false;
+        private boolean slow=false;
+        
+        
+        public void shouldStop() {
+            this.shouldStop = true;
+        }
+        
+       
+        public void pauseGame() { pause = true; }
+       
+        public void resumeGame() { pause = false; }
+
+        public boolean mainLoop() { return isMain;}
+        public void setSlow(){
+            if(slow) slow=false;
+            else slow=true;
+        }
+
+
+        public void setMain(){
+            if(isMain) isMain=false;
+            else isMain=true;
+        }
+        
+        public void run()
+        {
+            int count=0;
+            while( !shouldStop )
+            {
+                if(mainLoop()){
+                    try {
+                        Thread.sleep( 5 );
+                    } catch (InterruptedException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+                    if( !pause ){
+                        
+                        d.repaint();
+                        assignKeys();
+                        wraparound();
+
+                        
+                        
+                    }
+                }
+                else if(slow){
+                    try {
+                        Thread.sleep( 250 );
+                    } catch (InterruptedException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+
+                     if( !pause ){
+                        
+                        d.itColor();
+                        if(colorSwitch)
+                            frame.getContentPane().setBackground(new Color((int)(Math.random()*256),(int)(Math.random()*256),(int)(Math.random()*256)));
+                        
+                        int rand=(int)(Math.random()*6);
+                        //System.out.println(rand);
+                        if(rand==3&&!d.powerOn()){
+                        	 d.createPowerup(HEIGHT,WIDTH);  
+                        }
+                        
+                       
+                    }
+                }
+                else{
+                    try {
+                        Thread.sleep( 5 );
+                    } catch (InterruptedException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+                    count++;
+
+                     if( !pause ){
+                        //System.out.println(count);
+                        if(d.checkTag()){ 
+                            try{Thread.sleep(200);} catch(InterruptedException e){e.printStackTrace();}
+                            //System.out.println("Waiting");
+                            d.immobilize(true);
+                            time.schedule(new TimerTask() {
+                            @Override
+                                public void run() {
+                                    d.immobilize(false);
+                                }
+                                }, 1000 );
+                        
+                        }
+                        
+                        if(!d.powerGiven()&&d.powerOn()) d.checkPower();
+                        else if(d.powerOn) powerCount++;
+                        
+                        if(powerCount>=powerMax&&d.powerGiven())
+                        {
+                        	d.endPower();
+                        	powerCount=0;
+                        }
+                        if(powerCount>=powerWait)
+                        {
+                        	d.endPower();
+                        	powerCount=0;
+                        }
+                       
+                        
+                    }
+                }
+            }
+        }
+        
+    public void start () {
+      System.out.println("Starting " +  isMain);
+      if (t == null) {
+         t = new Thread(this, String.valueOf(isMain));
+         t.start();
+         
+      }
+    }
+
+        public void assignKeys(){
+            ArrayList<Player> players = d.getPlayers();
+            ArrayList<Integer> keys=d.getKeys();
+
+            for(int i=0;i<keys.size();i++){
+                
+                for(int j=0;j<players.size();j++){
+                    if(keys.size()>i&&players.get(j).hasKey(keys.get(i))){
+                       
+                        players.get(j).doKey(keys.get(i));
+                        
+                        
+                    } 
+
+                }
+            }
+        }
+
+
+        
+
+        public void wraparound(){
+            ArrayList<Player> players = d.getPlayers();
+            for(int i=0;i<players.size();i++){
+                Player p=players.get(i);
+                if(p.getX()>WIDTH-WRAPAROUND_THRESHOLDX) p.setX(WRAPAROUND_THRESHOLD0);
+                if(p.getX()<WRAPAROUND_THRESHOLD0) p.setX(WIDTH-WRAPAROUND_THRESHOLDX);
+                if(p.getY()>HEIGHT-WRAPAROUND_THRESHOLDY) p.setY(WRAPAROUND_THRESHOLD0);
+                if(p.getY()<WRAPAROUND_THRESHOLD0) p.setY(HEIGHT-WRAPAROUND_THRESHOLDY);
+            }
+        }
+        
+        
+        public boolean isPaused() {
+            return pause;
+        }
+    }
+    
+    
+}
